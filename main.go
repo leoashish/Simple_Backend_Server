@@ -10,9 +10,9 @@ import (
 )
 
 type Cat struct {
-	name  string
-	color string
-	breed string
+	Name  string `json:"name"`
+	Color string `json:"color"`
+	Breed string `json:"breed"`
 }
 
 type handler struct {
@@ -20,7 +20,9 @@ type handler struct {
 }
 
 func (h *handler) getCats(w http.ResponseWriter, r *http.Request) {
-	sqlStmt := "SELECT name , color , breed from catsinfo;"
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	sqlStmt := "SELECT name , color , breed from catsInfo;"
 	cats := []*Cat{}
 	rows, err := h.db.Query(sqlStmt)
 	if err != nil {
@@ -29,14 +31,21 @@ func (h *handler) getCats(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 	for rows.Next() {
 		cat := &Cat{}
-		err := rows.Scan(&cat.name, &cat.color, &cat.breed)
+		err := rows.Scan(&cat.Name, &cat.Color, &cat.Breed)
 		if err != nil {
 			panic(err)
 		}
 		cats = append(cats, cat)
 	}
-	json, _ := json.Marshal(cats)
-	fmt.Fprint(w, json)
+	if err != nil {
+		panic(err)
+	}
+	json, err := json.Marshal(&cats)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(json))
+	w.Write(json)
 }
 
 func (h *handler) AddCat(w http.ResponseWriter, r *http.Request) {
@@ -45,10 +54,10 @@ func (h *handler) AddCat(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	fmt.Sprintf(cat.name, cat.color, cat.breed)
-	stmt := `INSERT INTO catsinfo(name, color, breed) 
-	         VALUES(?, ?, ?)`
-	_, err = h.db.Exec(stmt, cat.name, cat.color, cat.breed)
+
+	stmt := `INSERT INTO catsInfo(name, color, breed)
+	         VALUES ($1,$2,$3);`
+	_, err = h.db.Exec(stmt, cat.Name, cat.Color, cat.Breed)
 
 	if err != nil {
 		panic(err)
@@ -57,7 +66,7 @@ func (h *handler) AddCat(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	mux := http.NewServeMux()
-	connStr := "user=postgres dbname=cats password=singoo123# host=localhost sslmode=disable"
+	connStr := "user=postgres dbname=cats password=notMyRealPassword host=localhost sslmode=disable"
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		panic(err)
